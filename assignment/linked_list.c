@@ -6,10 +6,10 @@
 
 /**
  * @brief adds a new node at the end of the linked list
- * 
- * @param ll LinkedList * 
+ *
+ * @param ll LinkedList *
  * @param data StudentDetail *
- * @return ** void 
+ * @return ** void
  */
 void insert(LinkedList *ll, StudentDetail *data)
 {
@@ -34,11 +34,16 @@ void insert(LinkedList *ll, StudentDetail *data)
     }
 }
 
+void print_student(StudentDetail *sd)
+{
+    printf("ID: %d\tName: %s\tRegistration No: %lu\n", sd->id, sd->name, sd->registration_no);
+}
+
 /**
  * @brief  prints all the node in linked list
- * 
+ *
  * @param ll LinkedList *
- * @return ** void 
+ * @return ** void
  */
 void print_ll(LinkedList *ll)
 {
@@ -47,27 +52,27 @@ void print_ll(LinkedList *ll)
 
     while (temp != NULL)
     {
-        printf("%d %s %lu\n", temp->data->id, temp->data->name, temp->data->registration_no);
+        print_student(temp->data);
         temp = temp->next;
     }
 }
 
 /**
  * @brief search for if any node in the linked list has the matching registration number
- * 
- * @param ll 
- * @param registration_no 
- * @param data 
+ *
+ * @param ll
+ * @param registration_no
+ * @param data
  * @return ** int  0 if success 1 if not found
  */
-int search(LinkedList *ll, int registration_no, StudentDetail *data)
+int search(LinkedList *ll, int id, StudentDetail *data)
 {
     struct node *temp;
     temp = *ll;
 
     while (temp != NULL)
     {
-        if (temp->data->registration_no == registration_no)
+        if (temp->data->id == id)
         {
             strcpy(data->name, temp->data->name);
             data->id = temp->data->id;
@@ -79,9 +84,17 @@ int search(LinkedList *ll, int registration_no, StudentDetail *data)
     return 1;
 }
 
-void print_student(StudentDetail *sd)
+void free_ll(LinkedList *ll)
 {
-    printf("ID: %d\tName: %s\tRegistration No: %lu", sd->id, sd->name, sd->registration_no);
+    struct node *e, *temp;
+    e = *ll;
+    while (e != NULL)
+    {
+        temp = e;
+        e = e->next;
+        free(temp->data);
+        free(temp);
+    }
 }
 
 StudentDetail *create_student(unsigned int id, char *name, unsigned long registration_no)
@@ -96,9 +109,9 @@ StudentDetail *create_student(unsigned int id, char *name, unsigned long registr
 
 /**
  * @brief Get the student ll object
- * 
- * @param ll 
- * @return int 
+ *
+ * @param ll
+ * @return int
  */
 int get_student_ll(LinkedList *ll)
 {
