@@ -1,9 +1,31 @@
+#include "server_store_ll.h"
 #include "utils.h"
 
 #define LISTENQ 10
+struct Message
+{
+    char msg[200];
+    char buffer[BUFFSIZE];
+    struct ST_Detail detail;
+};
+typedef struct Message *Message;
+
+void *ss_init()
+{
+    SS_LL serverStore = malloc(sizeof(serverStore));
+    serverStore->next = NULL;
+    return serverStore;
+}
 
 int main(int argc, char **argv)
 {
+    SS_LL serverStore = ss_init();
+    ST_LL studentStore = st_ll_get();
+    SS_Data clientData = malloc(sizeof(clientData));
+
+    Message req = malloc(sizeof(struct Message));
+    Message res = malloc(sizeof(struct Message));
+
     fd_set masterFDs, readFDs;
     int listenFD, newFD;
     int fdMax;
@@ -12,7 +34,7 @@ int main(int argc, char **argv)
     socklen_t clientAddrLen;
     int nBytes, port, optval = 1;
 
-    char clientAddrBuff[BUFFSIZE], recvBuffer[BUFFSIZE];
+    char clientAddrBuff[BUFFSIZE];
 
     if (argc != 2)
     {
@@ -71,12 +93,61 @@ int main(int argc, char **argv)
                 }
                 else
                 {
-                    if ((nBytes = Read(i, recvBuffer, BUFFSIZE + 1)) == 0) // if its 0 then client hung up
-                        FD_CLR(i, &masterFDs);
+                    bzero(res, sizeof(struct Message));
+                    if ((nBytes = Read(i, res, sizeof(struct Message))) == 0)
+                    {
+                        FD_CLR(i, &masterFDs); // if its 0 then client hung up
+                        ss_delete(&serverStore, i);
+                    }
                     else // if everything is ok and we heard from one of the client
                     {
-                        recvBuffer[nBytes] = 0;
-                        printf("fd:%d> %s\n", i, recvBuffer);
+                        if (ss_search(serverStore, i, &clientData) < 0)
+                        {
+                            int id = atoi(res->buffer);
+                            ST_Detail stDetail = malloc(sizeof(stDetail));
+                            if (st_search(studentStore, id, &stDetail) < 0)
+                            {
+                                printf("Not found in StudentStore\n");
+
+                                bzero(req, sizeof(struct Message));
+                                strcpy(req->msg, "buffer");
+                                strcpy(req->buffer, "not_found");
+                                Write(i, req, sizeof(struct Message));
+                            }
+                            else
+                            {
+                                SS_Data newClientData = create_ss(i, id, stDetail);
+                                newClientData->s_flag = 1;
+                                ss_push(&serverStore, newClientData);
+                                // ss_ll_print(serverStore);
+                                clientData = newClientData;
+                            }
+                        }
+
+                        if (strncmp(res->msg, "buffer", 6) == 0)
+                        {
+                            printf("fd:%d> %s %s\n", i, res->msg, res->buffer);
+
+                            if (strncmp(res->buffer, "thank_you", 9) == 0)
+                            {
+                                clientData->ty_flag = 1;
+                            }
+
+                            if (clientData->ty_flag == 1 && strncmp(res->buffer, "again", 5) == 0)
+                            {
+                                clientData->ty_flag = 0;
+                                clientData->s_flag = 1;
+                            }
+                        }
+
+                        if (clientData->s_flag == 1)
+                        {
+                            bzero(req, sizeof(struct Message));
+                            strcpy(req->msg, "detail");
+                            req->detail = *clientData->data;
+                            Write(i, req, sizeof(struct Message));
+                            clientData->s_flag = 0;
+                        }
                     }
                 }
             }

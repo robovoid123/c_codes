@@ -15,7 +15,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#define BUFFSIZE 1023
+#define BUFFSIZE 1024
 
 typedef struct sockaddr SA;
 

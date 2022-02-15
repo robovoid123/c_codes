@@ -1,14 +1,25 @@
+#include "server_store_ll.h"
 #include "utils.h"
 
 #define STDIN 0
 
+struct Message
+{
+    char msg[200];
+    char buffer[BUFFSIZE];
+    struct ST_Detail detail;
+};
+typedef struct Message *Message;
+
 int main(int argc, char **argv)
 {
     int sockFD, nBytes, port;
-    char sendBuff[BUFFSIZE], recvBuff[BUFFSIZE + 1];
+    char writeBuff[50];
+
+    Message req = malloc(sizeof(struct Message));
+    Message res = malloc(sizeof(struct Message));
 
     fd_set masterFDs, readFDs;
-    int listenFD, newFD;
     int fdMax;
 
     struct sockaddr_in serverAddr;
@@ -46,6 +57,12 @@ int main(int argc, char **argv)
     FD_SET(sockFD, &masterFDs);
     fdMax = sockFD;
 
+    bzero(req, sizeof(struct Message));
+    strcpy(req->msg, "buffer");
+    strcpy(req->buffer, argv[3]);
+
+    Write(sockFD, req, sizeof(struct Message));
+
     for (;;)
     {
         readFDs = masterFDs;
@@ -58,23 +75,53 @@ int main(int argc, char **argv)
 
         if (FD_ISSET(STDIN, &readFDs)) // from stdin
         {
-            nBytes = Read(0, sendBuff, BUFFSIZE);
-            if (strncmp(sendBuff, "quit", 4) == 0)
+            nBytes = Read(0, writeBuff, 50);
+            if (strncmp(writeBuff, "quit", 4) == 0)
             {
                 printf("Closing connection\n");
                 FD_CLR(sockFD, &masterFDs);
                 close(sockFD);
                 exit(0);
             }
-            sendBuff[nBytes] = 0;
-            Write(sockFD, sendBuff, BUFFSIZE);
+            writeBuff[nBytes] = 0;
+
+            bzero(req, sizeof(struct Message));
+            strcpy(req->msg, "buffer");
+            strncpy(req->buffer, writeBuff, nBytes);
+            Write(sockFD, req, sizeof(struct Message));
         }
         else if (FD_ISSET(sockFD, &readFDs)) // from socket
         {
-            // FIXME: if we close connection we server gets read error
-            nBytes = Read(sockFD, recvBuff, BUFFSIZE);
-            recvBuff[nBytes] = 0;
-            printf("%s", recvBuff);
+            bzero(res, sizeof(struct Message));
+            nBytes = Read(sockFD, res, sizeof(struct Message));
+
+            if (strncmp(res->msg, "buffer", 6) == 0)
+            {
+                printf("server> %s %s\n", res->msg, res->buffer);
+
+                if (strncmp(res->buffer, "not_found", 9) == 0)
+                {
+                    printf("No client data found by server\n");
+                    printf("Closing connection\n");
+                    FD_CLR(sockFD, &masterFDs);
+                    close(sockFD);
+                    exit(-1);
+                    return 1;
+                }
+            }
+
+            if (strncmp(res->msg, "detail", 6) == 0)
+            {
+                printf("\n");
+                printf("Displaying info:\n");
+                st_print(&(res->detail));
+                printf("\n");
+
+                bzero(req, sizeof(struct Message));
+                strcpy(req->msg, "buffer");
+                strcpy(req->buffer, "thank_you");
+                Write(sockFD, req, sizeof(struct Message));
+            }
         }
     }
 

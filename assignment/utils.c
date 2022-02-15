@@ -62,7 +62,6 @@ ssize_t Read(int clientFD, void *recvBuffer, size_t size)
         else
             printf("read error\n");
         close(clientFD);
-        exit(-1);
     }
     return n;
 }

@@ -32,7 +32,7 @@ int st_search(ST_LL ll, int id, ST_Detail *data)
             return 0;
         }
     }
-    return 1;
+    return -1;
 }
 
 void st_ll_free(ST_LL *ll)
