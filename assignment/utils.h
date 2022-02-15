@@ -15,6 +15,8 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#define BUFFSIZE 1023
+
 typedef struct sockaddr SA;
 
 int Socket(int domain, int type, int protocol);
